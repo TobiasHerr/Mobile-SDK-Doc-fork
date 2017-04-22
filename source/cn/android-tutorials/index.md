@@ -1,7 +1,7 @@
 ---
 title: Creating a Camera Application
 version: v4.0
-date: 2017-03-28
+date: 2017-04-01
 github: https://github.com/DJI-Mobile-SDK-Tutorials/Android-FPVDemo
 keywords: [Android FPVDemo, capture, shoot photo, take photo, record video, basic tutorial]
 ---
@@ -828,7 +828,7 @@ Now, let's open the "MainActivity.java" file and declare the `TAG` and `mReceive
 
 ~~~java
 private static final String TAG = MainActivity.class.getName();
-protected Camera.VideoDataCallback mReceivedVideoDataCallBack = null;
+protected VideoFeeder.VideoDataCallback mReceivedVideoDataCallBack = null;
 ~~~
 
 Then update the `onCreate()` method as shown below:
@@ -841,22 +841,19 @@ protected void onCreate(Bundle savedInstanceState) {
     initUI();
 
     // The callback for receiving the raw H264 video data for camera live view
-     mReceivedVideoDataCallBack = new Camera.VideoDataCallback() {
+    mReceivedVideoDataCallBack = new VideoFeeder.VideoDataCallback() {
 
         @Override
-        public void onReceive(byte[] bytes, int size) {
-            if(mCodecManager != null){
-                // Send the raw H264 video data to codec manager for decoding
-                mCodecManager.sendDataToDecoder(bytes, size);
-            }else {
-                Log.e(TAG, "mCodecManager is null");
+        public void onReceive(byte[] videoBuffer, int size) {
+            if (mCodecManager != null) {
+                mCodecManager.sendDataToDecoder(videoBuffer, size);
             }
         }
     };
 }
 ~~~
 
-In the code above, we initialize the `mReceivedVideoDataCallBack` variable using Camera's `VideoDataCallback()`. Inside the callback, we override its `onReceive()` method to get the raw H264 video data and send them to `mCodecManager` for decoding.  
+In the code above, we initialize the `mReceivedVideoDataCallBack` variable using VideoFeeder's `VideoDataCallback()`. Inside the callback, we override its `onReceive()` method to get the raw H264 video data and send them to `mCodecManager` for decoding.  
 
 Next, let's implement the `onProductChange()` method invoke it in the `onResume()` method as shown below: 
 
@@ -891,11 +888,10 @@ private void initPreviewer() {
         if (null != mVideoSurface) {
             mVideoSurface.setSurfaceTextureListener(this);
         }
-        if (!product.getModel().equals(Model.UnknownAircraft)) {
-            Camera camera = product.getCamera();
-            if (camera != null){
-                // Set the callback
-                camera.setVideoDataCallback(mReceivedVideoDataCallBack);
+        if (!product.getModel().equals(Model.UNKNOWN_AIRCRAFT)) {
+            if (VideoFeeder.getInstance().getVideoFeeds() != null
+                    && VideoFeeder.getInstance().getVideoFeeds().size() > 0) {
+                VideoFeeder.getInstance().getVideoFeeds().get(0).setCallback(mReceivedVideoDataCallBack);
             }
         }
     }
@@ -905,12 +901,12 @@ private void uninitPreviewer() {
     Camera camera = FPVDemoApplication.getCameraInstance();
     if (camera != null){
         // Reset the callback
-        FPVDemoApplication.getCameraInstance().setVideoDataCallback(null);
+            VideoFeeder.getInstance().getVideoFeeds().get(0).setCallback(null);
     }
 }
 ~~~
 
-In the `initPreviewer()` method, firstly, we check the product connection status and invoke the `setSurfaceTextureListener()` method of TextureView to set texture listener to MainActivity. Then get the Camera variable by invoking the `getCamera()` method of BaseProduct and set `mReceivedVideoDataCallBack` as its "VideoDataCallback". So once the camera is connected and receive video data, it will show on the `mVideoSurface` TextureView.
+In the `initPreviewer()` method, firstly, we check the product connection status and invoke the `setSurfaceTextureListener()` method of TextureView to set texture listener to MainActivity. Then check if `VideoFeeder` has video feeds and the video feed's size is larger than 0 and set the `mReceivedVideoDataCallBack` as its "callback". So once the camera is connected and receive video data, it will show on the `mVideoSurface` TextureView.
 
 Moreover, we implement the `uninitPreviewer()` method to reset Camera's "VideoDataCallback" to null.
 

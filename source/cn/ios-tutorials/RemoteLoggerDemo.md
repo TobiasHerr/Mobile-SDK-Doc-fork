@@ -1,7 +1,7 @@
 ---
 title: DJI Remote Logger Tutorial
 version: v4.0
-date: 2017-03-03
+date: 2017-04-01
 github: https://github.com/DJI-Mobile-SDK-Tutorials/DJIRemoteLoggerDemo
 keywords: [iOS remote logger demo, DJI Remote Logger, remote logging, debug]
 ---
@@ -18,7 +18,7 @@ You can download the tutorial's final sample code project from this [Github Page
 
 ### HTTP Mode
 
-![httpMode](../../../images/tutorials-and-samples/iOS/RemoteLoggerDemo/httpModeFinalOne.png)
+![httpMode](../../images/tutorials-and-samples/iOS/RemoteLoggerDemo/httpModeFinalOne.png)
 
 You can connect your iOS device and Mac to the same WiFi network or connect to a local wireless connection created on your Mac too. This would be helpful when you test your application outside without internet connection.
 
@@ -163,3 +163,4 @@ Finally, build and run the project, press the button, you may be able to see the
 ### Summary
 
   Congratulations! You've learned how to use DJI Remote Logger Tool to show log messages of your application using DJI Mobile SDK. With DJI Remote Logger Tool, you can developer and debug your application with DJI Mobile SDK more efficiently. Hope you enjoy this tutorial, Thanks!
+

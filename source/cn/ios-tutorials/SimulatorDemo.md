@@ -1,7 +1,7 @@
 ---
 title: DJI Simulator Tutorial
 version: v4.0
-date: 2017-02-23
+date: 2017-03-31
 github: https://github.com/DJI-Mobile-SDK-Tutorials/iOS-SimulatorDemo
 ---
 
@@ -71,7 +71,7 @@ Let's open RootViewController.m file and create IBOutlets properties to link the
 }
 ~~~
 
-Next, invoke the above method at the end of both the `viewDidAppear` method and `sdkManagerProductDidChangeFrom:to:` method as shown below:
+Next, invoke the above method at the end of both the `viewDidAppear` method and `productConnected:` method as shown below:
 
 ~~~objc
 - (void)viewDidAppear:(BOOL)animated
@@ -85,11 +85,11 @@ Next, invoke the above method at the end of both the `viewDidAppear` method and 
 ~~~
 
 ~~~objc
-- (void)sdkManagerProductDidChangeFrom:(DJIBaseProduct *)oldProduct to:(DJIBaseProduct *)newProduct
+- (void)productConnected:(DJIBaseProduct *)product
 {
     ...
     
-    [self updateStatusBasedOn:newProduct];
+    [self updateStatusBasedOn:product];
 }
 ~~~
 

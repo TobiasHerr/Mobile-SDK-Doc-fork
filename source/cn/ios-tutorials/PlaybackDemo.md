@@ -1,7 +1,7 @@
 ---
 title: Creating a Photo and Video Playback Application
 version: v4.0
-date: 2017-03-3
+date: 2017-03-31
 github: https://github.com/DJI-Mobile-SDK-Tutorials/iOS-PlaybackDemo
 keywords: [iOS playback demo, playback application, preview photos and videos, download photos and videos, delete photos and videos]
 ---
@@ -26,9 +26,9 @@ Now, let's create a new project in Xcode, choose **Single View Application** tem
 
 Once the project is created, let's import the **DJISDK.framework** to it. If you are not familiar with the process of importing and activating DJI SDK, please check this tutorial: [Importing and Activating DJI SDK in Xcode Project](../application-development-workflow/workflow-integrate.html#Xcode-Project-Integration) for details.
 
-### 2. Importing the DJIVideoPreviewer
+### 2. Importing the VideoPreviewer
 
-**DJIVideoPreviewer** is an open source project to decode and render video data from DJI products. You can check our previous tutorial [Creating a Camera Application](./index.html) to learn how to download and import the [**DJIVideoPreviewer**]() into your Xcode project using Cocoapods.
+ You can check our previous tutorial [Creating a Camera Application](./index.html) to learn how to download and import the **VideoPreviewer** into your Xcode project.
   
 ### 3. Switching Playback Modes
 
@@ -46,9 +46,9 @@ Then, add a UIView inside the **Root View Controller** and set it as an IBOutlet
 ~~~objc
 #import "DJIRootViewController.h"
 #import <DJISDK/DJISDK.h>
-#import <DJIVideoPreviewer/VideoPreviewer.h>
+#import <VideoPreviewer/VideoPreviewer.h>
 
-@interface DJIRootViewController ()<DJICameraDelegate, DJISDKManagerDelegate, DJIPlaybackDelegate, DJIBaseProductDelegate>
+@interface DJIRootViewController ()<DJICameraDelegate, DJISDKManagerDelegate, DJIPlaybackDelegate, DJIBaseProductDelegate, DJIVideoFeedListener>
 @property (weak, nonatomic) IBOutlet UIButton *recordBtn;
 @property (weak, nonatomic) IBOutlet UISegmentedControl *changeWorkModeSegmentControl;
 @property (weak, nonatomic) IBOutlet UIView *fpvPreviewView;
@@ -61,14 +61,15 @@ Then, add a UIView inside the **Root View Controller** and set it as an IBOutlet
 
 ~~~
 
-In the viewDidAppear method, let's set the **fpvPreviewView** instance as a View of **VideoPreviewer** to show the Video Stream and reset it to nil by calling the cleanVideoPreview method in the viewWillDisappear method. Also, in the viewWillDisappear method, we set camera and its playbackManger property's delegate to nil. Then create a new method named "registerApp" for app registration.
+In the viewDidAppear method, let's set the **fpvPreviewView** instance as a View of **VideoPreviewer** to show the Video Stream and reset it to nil by calling the `cleanVideoPreview` method in the viewWillDisappear method. Also, in the viewWillDisappear method, we set camera and its playbackManger property's delegate to nil. Then create a new method named "registerApp" for app registration.
 
 ~~~objc
 - (void)viewDidAppear:(BOOL)animated
 {
-    [super viewDidAppear:animated];
+    [super viewWillAppear:animated];
     [[VideoPreviewer instance] setView:self.fpvPreviewView];
     [self registerApp];
+    
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -78,8 +79,7 @@ In the viewDidAppear method, let's set the **fpvPreviewView** instance as a View
     __weak DJICamera* camera = [self fetchCamera];
     if (camera && camera.delegate == self) {
         [camera setDelegate:nil];
-    }    
-    
+    }
     if (camera && camera.playbackManager.delegate == self) {
         [camera.playbackManager setDelegate:nil];
     }
@@ -88,7 +88,8 @@ In the viewDidAppear method, let's set the **fpvPreviewView** instance as a View
 }
 
 - (void)cleanVideoPreview {
-    [[VideoPreviewer instance] unSetView];
+    [[VideoPreviewer instance] setView:nil];
+    [[DJISDKManager videoFeeder].primaryVideoFeed removeListener:self];
     
     if (self.fpvPreviewView != nil) {
         [self.fpvPreviewView removeFromSuperview];
@@ -98,14 +99,12 @@ In the viewDidAppear method, let's set the **fpvPreviewView** instance as a View
 
 - (void)registerApp
 {
-    NSString *appKey = @"Enter Your App Key Here";
     [DJISDKManager registerAppWithDelegate:self];
-    
 }
 
 ~~~
 
-Also, implement the DJISDKManagerDelegate methods to do initial setup after register app success. Moreover, in the `sdkManagerProductDidChangeFrom` method, let's fetch a camera object and set its delegate and its playbackManager property's delegate as shown below:
+Also, implement the DJISDKManagerDelegate methods to do initial setup after register app success. Moreover, in the `productConnected` delegate method, let's fetch a camera object and set its delegate and its playbackManager property's delegate as shown below:
 
 ~~~objc
 
@@ -132,16 +131,19 @@ Also, implement the DJISDKManagerDelegate methods to do initial setup after regi
     {
         NSLog(@"registerAppSuccess");
         [DJISDKManager startConnectionToProduct];
+        [[DJISDKManager videoFeeder].primaryVideoFeed addListener:self withQueue:nil];
         [[VideoPreviewer instance] start];
     }
     
     [self showAlertViewWithTitle:@"Register App" withMessage:message];
 }
 
--(void) sdkManagerProductDidChangeFrom:(DJIBaseProduct* _Nullable) oldProduct to:(DJIBaseProduct* _Nullable) newProduct
+#pragma mark DJIBaseProductDelegate Method
+
+- (void)productConnected:(DJIBaseProduct *)product
 {
-    if (newProduct) {
-        [newProduct setDelegate:self];
+    if (product) {
+        [product setDelegate:self];
         DJICamera* camera = [self fetchCamera];
         if (camera != nil) {
             camera.delegate = self;
@@ -152,11 +154,11 @@ Also, implement the DJISDKManagerDelegate methods to do initial setup after regi
 
 ~~~
 
-  Furthermore, implement the **DJICameraDelegate** methods, as shown below:
+  Furthermore, implement the **DJIVideoFeedListener** and **DJICameraDelegate** delegate methods, as shown below:
   
 ~~~objc
 
-- (NSString *)formattingSeconds:(int)seconds
+- (NSString *)formattingSeconds:(NSUInteger)seconds
 {
     NSDate *date = [NSDate dateWithTimeIntervalSince1970:seconds];
     NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
@@ -167,11 +169,13 @@ Also, implement the DJISDKManagerDelegate methods to do initial setup after regi
     return formattedTimeString;
 }
 
-#pragma mark - DJICameraDelegate
-- (void)camera:(DJICamera *)camera didReceiveVideoData:(uint8_t *)videoBuffer length:(size_t)size
-{
-    [[VideoPreviewer instance] push:videoBuffer length:(int)size];
+#pragma mark - DJIVideoFeedListener
+
+-(void)videoFeed:(DJIVideoFeed *)videoFeed didUpdateVideoData:(NSData *)videoData {
+    [[VideoPreviewer instance] push:(uint8_t *)videoData.bytes length:(int)videoData.length];
 }
+
+#pragma mark - DJICameraDelegate
 
 - (void)camera:(DJICamera *)camera didUpdateSystemState:(DJICameraSystemState *)systemState
 {   
@@ -250,11 +254,13 @@ Also, implement the DJISDKManagerDelegate methods to do initial setup after regi
             
         }
     }
+    
 }
 
 - (IBAction)changeWorkModeAction:(id)sender {
     
     __weak DJICamera *camera = [self fetchCamera];
+
     if (camera == nil) {
         return;
     }
@@ -263,45 +269,46 @@ Also, implement the DJISDKManagerDelegate methods to do initial setup after regi
     if (segmentControl.selectedSegmentIndex == 0) { //CaptureMode
         
         [camera setMode:DJICameraModeShootPhoto withCompletion:^(NSError * _Nullable error) {
-        WeakReturn(target);
-        
-        if (!self.playVideoBtn.hidden) {
-                [target.playVideoBtn setHidden:YES];
-        }
+            WeakReturn(target);
             
-        if (error) {
+            if (!self.playVideoBtn.hidden) {
+                [target.playVideoBtn setHidden:YES];
+            }
+            
+            if (error) {
                 UIAlertView *errorAlert = [[UIAlertView alloc] initWithTitle:@"Set CameraWorkModeCapture Failed" message:error.description delegate:target cancelButtonTitle:@"OK" otherButtonTitles:nil];
                 [errorAlert show];
             }
+            
         }];
         
     }else if (segmentControl.selectedSegmentIndex == 1){ //RecordMode
         
         [camera setMode:DJICameraModeRecordVideo withCompletion:^(NSError * _Nullable error) {
-        WeakReturn(target);
+            WeakReturn(target);
             
-        if (!self.playVideoBtn.hidden) {
-            [target.playVideoBtn setHidden:YES];
-        }
-            
-        if (error) {
-            UIAlertView *errorAlert = [[UIAlertView alloc] initWithTitle:@"Set CameraWorkModeRecord Failed" message:error.description delegate:target cancelButtonTitle:@"OK" otherButtonTitles:nil];
-            [errorAlert show];
-        }
+            if (!self.playVideoBtn.hidden) {
+                [target.playVideoBtn setHidden:YES];
+            }
 
-       }];
+            if (error) {
+                UIAlertView *errorAlert = [[UIAlertView alloc] initWithTitle:@"Set CameraWorkModeRecord Failed" message:error.description delegate:target cancelButtonTitle:@"OK" otherButtonTitles:nil];
+                [errorAlert show];
+            }
+        }];
         
     }else if (segmentControl.selectedSegmentIndex == 2){  //PlaybackMode
         
         [camera setMode:DJICameraModePlayback withCompletion:^(NSError * _Nullable error) {
-        WeakReturn(target);
-        if (error) {
-              UIAlertView *errorAlert = [[UIAlertView alloc] initWithTitle:@"Set CameraWorkModePlayback Failed" message:error.description delegate:target cancelButtonTitle:@"OK" otherButtonTitles:nil];
-              [errorAlert show];
+            WeakReturn(target);
+            if (error) {
+                UIAlertView *errorAlert = [[UIAlertView alloc] initWithTitle:@"Set CameraWorkModePlayback Failed" message:error.description delegate:target cancelButtonTitle:@"OK" otherButtonTitles:nil];
+                [errorAlert show];
             }
         }];
     }
 }
+
 
 ~~~
 
@@ -453,7 +460,7 @@ Finally, we can implement the **IBAction** methods as follows:
 - (IBAction)playVideoBtnAction:(id)sender {
     __weak DJICamera *camera = [self fetchCamera];
     if (self.cameraPlaybackState.fileType == DJICameraPlaybackFileTypeVIDEO) {
-        [camera.playbackManager startVideoPlayback];
+        [camera.playbackManager playVideo];
     }
 }
 
@@ -461,13 +468,13 @@ Finally, we can implement the **IBAction** methods as follows:
     __weak DJICamera *camera = [self fetchCamera];
     if (self.cameraPlaybackState.fileType == DJICameraPlaybackFileTypeVIDEO) {
         if (self.cameraPlaybackState.videoPlayProgress > 0) {
-            [camera.playbackManager stopVideoPlayback];
+            [camera.playbackManager stopVideo];
         }
     }
 }
 ~~~
 
-In the **playVideoBtnAction** and **stopVideoBtnAction** methods, we check if the media type is video, then call the **startVideoPlayback** and the **stopVideoPlayback** methods of the **DJICamera**'s playbackManager to start and stop playing the video. 
+In the **playVideoBtnAction** and **stopVideoBtnAction** methods, we check if the media type is video, then call the **playVideo** and the **stopVideo** methods of the **DJICamera**'s playbackManager to start and stop playing the video. 
 
 Once it's done, build and run the project. Try swiping left and right in playbackMode to navigate through your photos and videos. If you see the play button at the center of the screen, press it to play the video.
 
@@ -485,41 +492,37 @@ Before we move forward, let's explain the **Playback mode**. There are multiple 
  */
 typedef NS_ENUM (uint8_t, DJICameraPlaybackMode){
     /**
-     *  Single file preview
+     *  Single file preview mode.
      */
-    DJICameraPlaybackModeSingleFilePreview = 0x00,
+    DJICameraPlaybackModeSingleFilePreview = 0,
     /**
-     *  Single photo zoomed
+     *  Single video playback start.
      */
-    DJICameraPlaybackModeSinglePhotoZoomMode = 0x01,
+    DJICameraPlaybackModeSingleVideoPlaybackStart = 2,
     /**
-     *  Single video play start
+     *  Single video playback pause.
      */
-    DJICameraPlaybackModeSingleVideoPlaybackStart = 0x02,
+    DJICameraPlaybackModeSingleVideoPlaybackPause = 3,
     /**
-     *  Single video play pause
+     *  Multiple file edit.
      */
-    DJICameraPlaybackModeSingleVideoPlaybackPause = 0x03,
+    DJICameraPlaybackModeMultipleFilesEdit = 4,
     /**
-     *  Multiple file edit
+     *  Multiple media file preview.
      */
-    DJICameraPlaybackModeMultipleFilesEdit = 0x04,
+    DJICameraPlaybackModeMultipleFilesPreview = 5,
     /**
-     *  Multiple file preview
+     *  Download media files.
      */
-    DJICameraPlaybackModeMultipleFilesPreview = 0x05,
+    DJICameraPlaybackModeDownload = 6,
     /**
-     *  Download file
-     */
-    DJICameraPlaybackModeDownload = 0x06,
-    /**
-     *  Unknown mode
+     *  Unknown playback mode.
      */
     DJICameraPlaybackModeUnknown = 0xFF,
 };
 ~~~
 
-As shown in the code above, we can preview files in two ways: **Single Preview** and **Multiple Preview**. We can also zoom into out of photos, play videos, delete photos and videos and even download them. 
+As shown in the code above, we can preview files in two ways: **Single Preview** and **Multiple Preview**. We can also play videos, delete photos and videos and even download them. 
 
 We will learn how to preview multiple files here. Here is what **Multiple Preview** looks like:
 
@@ -906,7 +909,7 @@ Furthermore, implement the **deleteButtonAction** action method as shown below:
 ~~~objc
 - (IBAction)deleteButtonAction:(id)sender {
     
-    self.selectedFileCount = self.cameraPlaybackState.numberOfSelectedFiles;
+    self.selectedFileCount = self.cameraPlaybackState.selectedFileCount;
     
     if (self.cameraPlaybackState.playbackMode == DJICameraPlaybackModeMultipleFilesEdit) {
 
@@ -938,7 +941,7 @@ Furthermore, implement the **deleteButtonAction** action method as shown below:
 }
 ~~~
 
-The above code updates the **selectedFileCount** property value with **cameraPlaybackState**'s "numberOfSelectedFiles" value. It then checks the **playbackMode** value of cameraPlaybackState to show alertViews in the "DJICameraPlaybackModeMultipleFilesEdit" and "DJICameraPlaybackModeSingleFilePreview" mode. Here we use macro definition for the UIAlertView's tag property:
+The above code updates the **selectedFileCount** property value with **cameraPlaybackState**'s "selectedFileCount" value. It then checks the **playbackMode** value of cameraPlaybackState to show alertViews in the "DJICameraPlaybackModeMultipleFilesEdit" and "DJICameraPlaybackModeSingleFilePreview" mode. Here we use macro definition for the UIAlertView's tag property:
 
 ~~~objc
 #define kDeleteAllSelFileAlertTag 100
@@ -1100,7 +1103,7 @@ Furthermore, define two UIAlertView constant tag objects, implement the **downlo
 
 - (IBAction)downloadButtonAction:(id)sender {
     
-    self.selectedFileCount = self.cameraPlaybackState.numberOfSelectedFiles;
+    self.selectedFileCount = self.cameraPlaybackState.selectedFileCount;
     
     if (self.cameraPlaybackState.playbackMode == DJICameraPlaybackModeMultipleFilesEdit) {
         
@@ -1357,5 +1360,4 @@ Let's build and run the project. Try to download photos in Single Preview Mode a
 ### Summary
    
    In this tutorial, you have learned how to preview photos and videos in Single Preview Mode and Multiple Preview Mode, how to enter multiple edit mode and select files for deleting. You also learned how to download and save photos to the iOS Photo Album. Hope you enjoy it!
-   
    
