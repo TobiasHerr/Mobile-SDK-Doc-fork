@@ -1,6 +1,6 @@
 ---
 title: Integrate SDK into Application
-date: 2017-3-2
+date: 2017-5-10
 keywords: [Xcode project integration, import SDK, import framework,  android studio integration]
 ---
 
@@ -90,7 +90,7 @@ Screenshots in this section are generated using Xcode 7.3.
 ~~~objc
 - (void)viewDidAppear:(BOOL)animated
 {
-    [super viewWillAppear:animated];
+    [super viewDidAppear:animated];
     [self registerApp];
 }
 

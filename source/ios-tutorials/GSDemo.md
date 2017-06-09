@@ -1,7 +1,7 @@
 ---
 title: Creating a MapView and Waypoint Application
-version: v4.0.1
-date: 2017-04-24
+version: v4.1.1
+date: 2017-06-06
 github: https://github.com/DJI-Mobile-SDK-Tutorials/iOS-GSDemo
 keywords: [iOS GSDemo, waypoint mission demo]
 ---
@@ -123,7 +123,7 @@ Let's go to the DJIMapController.m file and replace the original code with the f
 
 @end
 ~~~
-First, we initialize the **editPoints** array in the init method, then create MKPointAnnotation objects from CGPoint and add them to our **mapView**, and finally implement the **cleanAllPointsWithMapView** method to clean up the **eidtPoints** array and the annotations on the mapView.
+First, we initialize the **editPoints** array in the init method, then create MKPointAnnotation objects from CGPoint and add them to our **mapView**, and finally implement the **cleanAllPointsWithMapView** method to clean up the **editPoints** array and the annotations on the mapView.
 
 Go back to the DJIRootViewController.m file, import the DJIMapController.h header file, and create a DJIMapController property named **mapController**. Since we want to add annotation pins by tapping on the map, we also need to create a UITapGestureRecognizer named as **tapGesture**. Lastly, add a UIButton to the DJIRootViewController scene in Main.storyboard, set its IBOutlet name as "**editBtn**", and add an IBAction method named "**editBtnAction**" for it, as shown below:
 
@@ -289,7 +289,7 @@ Once you are done, go back to DJIRootViewController.m file and add the following
     }
 }
 
-- (IBAction)focusMapAction:(id)sender {
+- (IBAction)focusMapAction:(id)sender
 {
     if (CLLocationCoordinate2DIsValid(self.userLocation)) {
         MKCoordinateRegion region = {0};

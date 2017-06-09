@@ -51,7 +51,14 @@ Now, let's create a new file, choose the "Cocoa Touch Class" template and choose
 
 Next, open the **Main.storyboard** file and drag and drop a new "View Controller" object from the Object Library and set its "Class" value as **PlaybackViewController**. Moreover, drag and drop a new "Container View" object in the **PlaybackViewController** and set its ViewController's "Class" value as **DULFPVViewController**, which contains a `DULFPVView` and will show the live video feed directly. Furthermore, drag and drop a UIButton on the upper left corner and edit its text to "Back".
 
-Lastly, let's drag and place a UIButton on the bottom right corner of the **DefaultLayoutViewController** view and create a segue to show the **PlaybackViewController** when the user press the button.
+~~~objc
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    [[VideoPreviewer instance] setView:self.fpvPreviewView];
+    [self registerApp];
+    
+}
 
 If everything goes well, you should see the storyboard layout like this:
 
