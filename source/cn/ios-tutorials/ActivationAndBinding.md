@@ -75,7 +75,7 @@ Next, replace the code in the `viewDidLoad` method with the followings:
 }
 ~~~
 
-In the code above, we firstly set the delegate of `DJIAppActivationManager` as **ViewController**. Then initialize the `activationState` and `aircraftBindingState` properties with the value of `appActivationState` and `aircraftBindingState` properties of `DJIAppActivationManager`.
+In the code above, we firstly set the delegate of `DJIAppActivationManager` as **ViewController**. Then initialize the `activationState` and `aircraftBindingState` properties with the current value of `appActivationState` and `aircraftBindingState` properties of `DJIAppActivationManager`.
 
 Furthermore, create the `updateUI` method as shown below to update the two UILabel properties' text value according to the values of `aircraftBindingState` and `activationState` properties, then invoke it in the `viewDidAppear:` method:
 
@@ -149,6 +149,8 @@ The code above implements:
 1. The `manager:didUpdateAppActivationState:` delegate method will be called when the app activation state changes. In this method, we update the value of `activationState` property and invoke the `updateUI` method to update the text values of the UILabels.
 
 2. The `manager:didUpdateAircraftBindingState:` delegate method will be called when the App Activation manager updates the aircraft binding state. In this method, we update the value of `aircraftBindingState` property and invoke the `updateUI` method to update the text values of the UILabels.
+
+> Important: The `DJIAppActivationState` and `DJIAppActivationAircraftBindingState` enum values in the above delegate methods will be updated only when the actual application activation state and aircraft binding state get changed.
 
 #### Login and Logout DJI User Account
 

@@ -421,6 +421,8 @@ Here, we implement the following features:
 
 3. Lastly, override the `onResume()` method and invoke the `setUpListener()` to setup the listeners. Then override the `onDestroy()` method and invoke the `tearDownListener()` method to remove the listeners in `appActivationManager`.
 
+> Important: The `AppActivationState` and `AircraftBindingState` enum values in the above `onUpdate()` methods of listeners will be updated only when the actual application activation state and aircraft binding state get changed.
+
 ### Working on Login and Logout DJI User Account
 
 In order to activate the application, we need to login a DJI user account. Now let's create the following methods and invoke them in the `onClick()` method:
